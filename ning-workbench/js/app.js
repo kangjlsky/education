@@ -6,12 +6,18 @@
 
 import { createState, verify, changePassword, isLocked, DEFAULT_PASSWORD } from './core/password.js';
 import { addCheckin, hasCheckin } from './core/stars.js';
+import { toDateStr, addDays, mondayOf } from './core/dates.js';
+import { newMedals } from './core/medals.js';
+import { settleWeek, WEEK_BONUS, pendingWeeks } from './core/attendance.js';
 import { renderPoems, resetPoems } from './boards/poems.js';
+import { renderMedals } from './boards/medals.js';
 
 /* ---------- 常量 ---------- */
 const SETTINGS_KEY = 'ning.settings'; // 家长设置（含密码状态）
 const SCORE_KEY = 'ning.stars';       // 星光总数
 const LOGS_KEY = 'ning.logs';         // 打卡记录数组
+const MEDALS_KEY = 'ning.medals';     // 勋章状态 { redeemed, history }
+const SETTLED_KEY = 'ning.settledWeek'; // 已结算的周（weekStart）
 
 /* ---------- 6 大板块配置（占位；后续板块 ticket 填充实现） ---------- */
 const BOARDS = [
@@ -40,12 +46,21 @@ const Store = {
 
 /* ---------- 全局状态 ---------- */
 let settings = Store.load(SETTINGS_KEY, null) || createState();
-let score = Store.load(SCORE_KEY, 0);
+const rawScore = Store.load(SCORE_KEY, 0);
+let score = Number.isFinite(Number(rawScore)) && Number(rawScore) >= 0 ? Math.floor(Number(rawScore)) : 0;
 let logs = Store.load(LOGS_KEY, []);
 let currentView = 'home';   // home | gate | setpwd | parent | board
 let activeBoard = null;     // 当前板块 key
 let gateInput = '';         // 密码输入缓冲区
 let lockTimer = null;       // 锁定倒计时定时器
+let medals = Store.load(MEDALS_KEY, { redeemed: 0, history: [] }); // 勋章状态
+let settledWeek = Store.load(SETTLED_KEY, null); // 已结算周
+
+// 存储健壮性：脏数据（旧版本/被篡改）规范化，避免运行期崩溃
+if (!medals || typeof medals !== 'object' || Array.isArray(medals)) medals = { redeemed: 0, history: [] };
+if (!Number.isInteger(medals.redeemed) || medals.redeemed < 0) medals.redeemed = 0;
+if (!Array.isArray(medals.history)) medals.history = [];
+if (typeof settledWeek !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(settledWeek)) settledWeek = null;
 
 const view = document.getElementById('view');
 
@@ -90,26 +105,80 @@ function toast(msg) {
 /* ---------- 板块渲染注册表：已实现的板块在此登记，未登记的走占位 ---------- */
 const BOARD_RENDERERS = {
   poems: { render: renderPoems, reset: resetPoems },
+  medals: { render: renderMedals },
 };
 
 /* ---------- 打卡工具（积分引擎接入） ---------- */
 function todayStr() {
-  const d = new Date();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${m}-${day}`;
+  return toDateStr(new Date());
 }
 
-/** 执行打卡：去重 + 星光 +1 + 持久化（返回引擎结果） */
+/** 执行打卡：去重 + 持久化 + 星光/勋章/全勤结算（返回引擎结果） */
 function checkin(subject, item) {
-  const r = addCheckin(logs, score, { date: todayStr(), subject, item, ts: Date.now() });
+  const date = todayStr();
+  const r = addCheckin(logs, score, { date, subject, item, ts: Date.now() });
   if (r.ok) {
     logs = r.logs;
-    score = r.stars;
     Store.save(LOGS_KEY, logs);
-    Store.save(SCORE_KEY, score);
+    awardStars(1, date);
+    settleWeekIfDue();
   }
   return r;
+}
+
+/** 统一加星光：持久化 + 检测新勋章并庆祝 */
+function awardStars(delta, date) {
+  const before = score;
+  score += delta;
+  Store.save(SCORE_KEY, score);
+  const gained = newMedals(before, score);
+  if (gained > 0) {
+    medals.history.push({ date, type: 'earn', n: gained, stars: score });
+    Store.save(MEDALS_KEY, medals);
+    celebrateMedal(gained);
+  }
+}
+
+/** 结算未结算的全勤周（启动与每次打卡后调用；从最早未结算周循环到上一周） */
+function settleWeekIfDue() {
+  const prevStart = addDays(mondayOf(todayStr()), -7); // 上一周周一
+  for (const start of pendingWeeks(settledWeek, prevStart)) {
+    const end = addDays(start, 6);
+    const before = score;
+    const after = settleWeek(logs, score, start, end);
+    if (after !== before) {
+      awardStars(WEEK_BONUS, todayStr());
+      toast('🏆 上周全勤 +3 星光');
+    }
+    settledWeek = start; // 发奖后再标记，避免满勤判定失败却提前标记
+  }
+  Store.save(SETTLED_KEY, settledWeek);
+}
+
+/* ---------- 勋章庆祝动画（全屏） ---------- */
+function celebrateMedal(n) {
+  // 清理残留庆祝层，避免快速连续触发叠加
+  document.querySelectorAll('.celebrate').forEach((el) => el.remove());
+  const overlay = document.createElement('div');
+  overlay.className = 'celebrate';
+  const emojis = ['🎖️', '⭐', '✨', '🎉'];
+  for (let i = 0; i < 16; i++) {
+    const s = document.createElement('span');
+    s.className = 'celebrate-item';
+    s.textContent = emojis[i % emojis.length];
+    s.style.left = Math.random() * 96 + 2 + '%';
+    s.style.animationDelay = Math.random() * 1.2 + 's';
+    s.style.fontSize = 22 + Math.random() * 26 + 'px';
+    overlay.appendChild(s);
+  }
+  const badge = document.createElement('div');
+  badge.className = 'celebrate-badge';
+  badge.textContent = `🎖️ 获得勋章 ×${n}`;
+  overlay.appendChild(badge);
+  document.body.appendChild(overlay);
+  setTimeout(() => overlay.remove(), 2600);
+  // 延后播报，避免被打卡后的即时语音覆盖（勋章庆祝优先级最高）
+  setTimeout(() => Speak.zh(`太棒了！获得 ${n} 枚勋章！`), 600);
 }
 
 /** 今日是否已打卡某任务 */
@@ -160,6 +229,8 @@ function renderBoard() {
     feedPet,
     checkin,
     hasCheckin: hasCheckinToday,
+    getStars: () => score,
+    getMedals: () => medals,
     go,
   });
 }
@@ -467,6 +538,8 @@ function init() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
+  // 启动时结算上一周全勤（若满勤 +3 星光）
+  settleWeekIfDue();
   // 自动语音问候（若被浏览器拦截，用户可点全局小喇叭）
   setTimeout(() => Speak.zh('柠柠，今天想玩什么呀？'), 400);
   render();

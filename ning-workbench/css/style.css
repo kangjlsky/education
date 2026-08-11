@@ -342,6 +342,81 @@ html, body {
   animation: foodUp 1.2s ease-out forwards;
 }
 
+/* ---------- 勋章庆祝动画（全屏） ---------- */
+@keyframes celebrateFall {
+  0% { opacity: 0; transform: translateY(-10vh) rotate(0deg); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(110vh) rotate(360deg); }
+}
+.celebrate {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 200;
+  background: rgba(255, 255, 255, 0.35);
+}
+.celebrate-item {
+  position: absolute;
+  top: 0;
+  animation: celebrateFall 2.4s ease-in forwards;
+}
+@keyframes badgePop {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.celebrate-badge {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, var(--blue-deep), var(--pink-deep));
+  color: #fff;
+  border-radius: var(--radius-lg);
+  padding: 20px 34px;
+  font-size: 30px;
+  font-weight: 800;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+  animation: badgePop 0.5s ease-out forwards;
+}
+
+/* ---------- 勋章屋 ---------- */
+.medal-hero {
+  text-align: center;
+  padding: 18px 0 22px;
+}
+.medal-big { font-size: 72px; line-height: 1; }
+.medal-count {
+  font-size: 56px;
+  font-weight: 800;
+  color: var(--blue-deep);
+  line-height: 1.1;
+}
+.medal-label { font-size: 16px; color: var(--text-light); }
+.medal-progress {
+  height: 16px;
+  border-radius: 999px;
+  background: #eef3f6;
+  overflow: hidden;
+  margin: 10px 0 8px;
+}
+.medal-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--blue), var(--pink));
+  transition: width 0.4s ease;
+}
+.medal-history-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 2px;
+  border-bottom: 1px solid #f0f4f6;
+  font-size: 16px;
+}
+.medal-history-item:last-child { border-bottom: none; }
+.mh-date { color: var(--text-light); font-size: 14px; }
+
 /* ---------- toast ---------- */
 .toast {
   position: fixed;
