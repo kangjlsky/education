@@ -21,6 +21,24 @@ export function renderPoems(container, ctx) {
 /* ---------- 列表页 ---------- */
 function renderList(container, ctx) {
   container.setAttribute('data-speak', '国学，点一首古诗学一学吧');
+  const reviewDay = ctx.isReviewDay ? ctx.isReviewDay() : false;
+  const reviewExtra = ctx.getReviewPoems ? ctx.getReviewPoems() : [];
+
+  const reviewCards = reviewExtra
+    .map((id) => {
+      const p = POEMS.find((x) => x.id === id);
+      if (!p) return '';
+      const done = ctx.hasCheckin('poems', p.id);
+      return `
+      <button class="poem-card" data-id="${p.id}" aria-label="复习古诗 ${p.name}">
+        <span class="pc-ico">${p.ico}</span>
+        <span class="pc-name">${p.name}</span>
+        <span class="pc-author">${p.author}</span>
+        <span class="pc-status${done ? ' done' : ''}">${done ? '🌸' : '🔁'}</span>
+      </button>`;
+    })
+    .join('');
+
   const cards = POEMS.map((p) => {
     const done = ctx.hasCheckin('poems', p.id);
     return `
@@ -40,6 +58,12 @@ function renderList(container, ctx) {
       </div>
       <button class="btn-back" id="poemBack">🏠 返回</button>
     </header>
+    ${reviewDay ? '<div class="review-banner">🔁 今天是古诗复习日，背一背学过的诗吧！</div>' : ''}
+    ${reviewCards ? `
+      <div class="panel-card">
+        <h3>🔁 复习抽查</h3>
+        ${reviewCards}
+      </div>` : ''}
     <div class="poem-list">${cards}</div>
     <p class="hint">✨ 学完点"我会背啦"得星光</p>
   `;

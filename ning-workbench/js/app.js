@@ -9,6 +9,9 @@ import { addCheckin, hasCheckin } from './core/stars.js';
 import { toDateStr, addDays, mondayOf } from './core/dates.js';
 import { newMedals } from './core/medals.js';
 import { settleWeek, WEEK_BONUS, pendingWeeks } from './core/attendance.js';
+import { buildWeekPlan } from './core/plan.js';
+import { isSunday, dailyTargets, pickPoemReview } from './core/review.js';
+import { POEMS } from './data/poems.js';
 import { renderPoems, resetPoems } from './boards/poems.js';
 import { renderMedals } from './boards/medals.js';
 
@@ -18,6 +21,17 @@ const SCORE_KEY = 'ning.stars';       // 星光总数
 const LOGS_KEY = 'ning.logs';         // 打卡记录数组
 const MEDALS_KEY = 'ning.medals';     // 勋章状态 { redeemed, history }
 const SETTLED_KEY = 'ning.settledWeek'; // 已结算的周（weekStart）
+const WEEK_PLAN_KEY = 'ning.weekPlan';  // 本周计划 { weekStart, poems, words, books, reviewPoems?, reviewDate? }
+
+// 各科内容池（words/books 在识字/英语板块 ticket 实现后加入）
+const CONTENT_POOL = {
+  poems: POEMS.map((p) => p.id),
+  words: [],
+  books: [],
+};
+
+// 每周任务量（ticket 11 家长后台可配置）
+const WEEK_COUNTS = { poems: 3, words: 10, books: 3 };
 
 /* ---------- 6 大板块配置（占位；后续板块 ticket 填充实现） ---------- */
 const BOARDS = [
@@ -55,12 +69,14 @@ let gateInput = '';         // 密码输入缓冲区
 let lockTimer = null;       // 锁定倒计时定时器
 let medals = Store.load(MEDALS_KEY, { redeemed: 0, history: [] }); // 勋章状态
 let settledWeek = Store.load(SETTLED_KEY, null); // 已结算周
+let weekPlan = Store.load(WEEK_PLAN_KEY, null);  // 本周计划
 
 // 存储健壮性：脏数据（旧版本/被篡改）规范化，避免运行期崩溃
 if (!medals || typeof medals !== 'object' || Array.isArray(medals)) medals = { redeemed: 0, history: [] };
 if (!Number.isInteger(medals.redeemed) || medals.redeemed < 0) medals.redeemed = 0;
 if (!Array.isArray(medals.history)) medals.history = [];
 if (typeof settledWeek !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(settledWeek)) settledWeek = null;
+if (!weekPlan || typeof weekPlan !== 'object' || Array.isArray(weekPlan) || typeof weekPlan.weekStart !== 'string') weekPlan = null;
 
 const view = document.getElementById('view');
 
@@ -186,6 +202,36 @@ function hasCheckinToday(subject, item) {
   return hasCheckin(logs, todayStr(), subject, item);
 }
 
+/* ---------- 周计划（生成/复习抽查/今日任务） ---------- */
+
+/** 从打卡记录推导各科已学 id */
+function learnedIds() {
+  const bySubject = { poems: [], words: [], books: [] };
+  for (const l of Array.isArray(logs) ? logs : []) {
+    if (l && bySubject[l.subject] && !bySubject[l.subject].includes(l.item)) {
+      bySubject[l.subject].push(l.item);
+    }
+  }
+  return bySubject;
+}
+
+/** 确保本周计划已生成；周日生成/刷新复习抽查（当天固定） */
+function ensureWeekPlan() {
+  const today = todayStr();
+  const monday = mondayOf(today);
+  if (!weekPlan || weekPlan.weekStart !== monday) {
+    weekPlan = buildWeekPlan(monday, WEEK_COUNTS, CONTENT_POOL, learnedIds());
+    delete weekPlan.reviewPoems; // 换周清除旧复习抽查
+    delete weekPlan.reviewDate;
+    Store.save(WEEK_PLAN_KEY, weekPlan);
+  }
+  if (isSunday(today) && (!weekPlan.reviewPoems || weekPlan.reviewDate !== today)) {
+    weekPlan.reviewPoems = pickPoemReview(weekPlan.poems, learnedIds().poems, 2);
+    weekPlan.reviewDate = today;
+    Store.save(WEEK_PLAN_KEY, weekPlan);
+  }
+}
+
 /* ---------- 飘星动画 ---------- */
 function starFly(x, y, n = 1) {
   const s = document.createElement('div');
@@ -231,6 +277,8 @@ function renderBoard() {
     hasCheckin: hasCheckinToday,
     getStars: () => score,
     getMedals: () => medals,
+    getReviewPoems: () => (weekPlan && weekPlan.reviewPoems) || [],
+    isReviewDay: () => isSunday(todayStr()),
     go,
   });
 }
@@ -258,6 +306,14 @@ function go(next, boardKey) {
 
 /* ---------- 儿童模式：首页 ---------- */
 function renderHome() {
+  ensureWeekPlan(); // 确保本周计划已生成（含周日复习抽查）
+  const today = todayStr();
+  const targets = dailyTargets(today, weekPlan);
+  const done = targets.filter((t) => hasCheckinToday(t.subject, t.item)).length;
+  const total = targets.length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const reviewDay = isSunday(today);
+
   view.setAttribute('data-speak', '柠柠，今天想玩什么呀？');
   const cards = BOARDS.map(
     (b) => `
@@ -279,6 +335,15 @@ function renderHome() {
         <button class="pet-avatar" id="petBtn" aria-label="我的宠物">🦖</button>
       </div>
     </header>
+    ${reviewDay ? '<div class="review-banner">🔁 今天是古诗复习日，背一背学过的诗吧！</div>' : ''}
+    <div class="progress-card">
+      <div class="progress-head">
+        <span>📖 今日任务</span>
+        <span class="progress-num">${done} / ${total}</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+      ${total === 0 ? '<p class="desc">今天没有待办任务，休息一下吧～</p>' : ''}
+    </div>
     <div class="grid-6">${cards}</div>
     <p class="hint">✨ 完成打卡得星光，集齐星星换勋章！</p>
     <button class="btn-big ghost" id="parentGate">🔐 家长入口</button>
