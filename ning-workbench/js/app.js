@@ -5,10 +5,13 @@
    ========================================================= */
 
 import { createState, verify, changePassword, isLocked, DEFAULT_PASSWORD } from './core/password.js';
+import { addCheckin, hasCheckin } from './core/stars.js';
+import { renderPoems, resetPoems } from './boards/poems.js';
 
 /* ---------- 常量 ---------- */
 const SETTINGS_KEY = 'ning.settings'; // 家长设置（含密码状态）
 const SCORE_KEY = 'ning.stars';       // 星光总数
+const LOGS_KEY = 'ning.logs';         // 打卡记录数组
 
 /* ---------- 6 大板块配置（占位；后续板块 ticket 填充实现） ---------- */
 const BOARDS = [
@@ -38,8 +41,9 @@ const Store = {
 /* ---------- 全局状态 ---------- */
 let settings = Store.load(SETTINGS_KEY, null) || createState();
 let score = Store.load(SCORE_KEY, 0);
+let logs = Store.load(LOGS_KEY, []);
 let currentView = 'home';   // home | gate | setpwd | parent | board
-let activeBoard = null;     // 占位视图当前板块
+let activeBoard = null;     // 当前板块 key
 let gateInput = '';         // 密码输入缓冲区
 let lockTimer = null;       // 锁定倒计时定时器
 
@@ -83,6 +87,82 @@ function toast(msg) {
   setTimeout(() => t.remove(), 1800);
 }
 
+/* ---------- 板块渲染注册表：已实现的板块在此登记，未登记的走占位 ---------- */
+const BOARD_RENDERERS = {
+  poems: { render: renderPoems, reset: resetPoems },
+};
+
+/* ---------- 打卡工具（积分引擎接入） ---------- */
+function todayStr() {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+/** 执行打卡：去重 + 星光 +1 + 持久化（返回引擎结果） */
+function checkin(subject, item) {
+  const r = addCheckin(logs, score, { date: todayStr(), subject, item, ts: Date.now() });
+  if (r.ok) {
+    logs = r.logs;
+    score = r.stars;
+    Store.save(LOGS_KEY, logs);
+    Store.save(SCORE_KEY, score);
+  }
+  return r;
+}
+
+/** 今日是否已打卡某任务 */
+function hasCheckinToday(subject, item) {
+  return hasCheckin(logs, todayStr(), subject, item);
+}
+
+/* ---------- 飘星动画 ---------- */
+function starFly(x, y, n = 1) {
+  const s = document.createElement('div');
+  s.className = 'star-fly';
+  s.textContent = '⭐+' + n;
+  s.style.left = x + 'px';
+  s.style.top = y + 'px';
+  document.body.appendChild(s);
+  setTimeout(() => s.remove(), 1200);
+}
+
+/** 从指定元素位置飘星 */
+function starFlyAt(el) {
+  const rect = el.getBoundingClientRect();
+  starFly(rect.left + rect.width / 2, rect.top, 1);
+}
+
+/* ---------- 宠物进食动画（轻量版；完整宠物系统在 ticket 09） ---------- */
+function feedPet() {
+  const food = document.createElement('div');
+  food.className = 'food-fly';
+  food.textContent = '🍎';
+  food.style.left = '50%';
+  document.body.appendChild(food);
+  setTimeout(() => food.remove(), 1200);
+}
+
+/* ---------- 板块视图分发 ---------- */
+function renderBoard() {
+  const r = BOARD_RENDERERS[activeBoard];
+  if (!r) {
+    renderBoardPlaceholder();
+    return;
+  }
+  // 重新进入板块时重置板块内部状态（回到板块入口视图）
+  if (r.reset) r.reset();
+  r.render(view, {
+    speak: (t) => Speak.zh(t),
+    toast,
+    starFlyAt,
+    feedPet,
+    checkin,
+    hasCheckin: hasCheckinToday,
+    go,
+  });
+}
 /* ---------- 视图渲染入口 ---------- */
 function render() {
   Speak.stop();
@@ -95,7 +175,7 @@ function render() {
   else if (currentView === 'gate') renderGate(false);
   else if (currentView === 'setpwd') renderGate(true);
   else if (currentView === 'parent') renderParent();
-  else if (currentView === 'board') renderBoardPlaceholder();
+  else if (currentView === 'board') renderBoard();
   view.scrollTop = 0;
 }
 
@@ -136,7 +216,9 @@ function renderHome() {
   view.querySelectorAll('[data-board]').forEach((el) => {
     el.addEventListener('click', () => {
       const b = BOARDS.find((x) => x.key === el.dataset.board);
-      Speak.zh(`${b.name}板块，正在准备中，敬请期待`);
+      if (!BOARD_RENDERERS[b.key]) {
+        Speak.zh(`${b.name}板块，正在准备中，敬请期待`);
+      }
       go('board', b.key);
     });
   });
