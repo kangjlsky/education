@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>柠柠学习工作台</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#4BA7CA">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <main class="view" id="view" aria-live="polite"></main>
+  </div>
+
+  <!-- 全局小喇叭：朗读当前视图引导语（语音为增强能力，无声也可 100% 操作） -->
+  <button class="btn-speak" id="btnSpeak" aria-label="朗读引导语">🔊</button>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

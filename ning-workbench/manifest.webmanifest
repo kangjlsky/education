@@ -1,0 +1,16 @@
+{
+  "name": "柠柠学习工作台",
+  "short_name": "柠",
+  "description": "帮孩子养成好习惯的启蒙学习工作台",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#4BA7CA",
+  "theme_color": "#4BA7CA",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

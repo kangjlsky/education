@@ -1,0 +1,13 @@
+{
+  "name": "ning-workbench",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "柠柠学习工作台 - 4 岁儿童习惯养成与启蒙学习 PWA",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
+}
