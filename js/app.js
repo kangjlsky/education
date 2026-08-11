@@ -16,6 +16,8 @@ import { WORDS } from './data/words.js';
 import { renderPoems, resetPoems } from './boards/poems.js';
 import { renderMedals } from './boards/medals.js';
 import { renderWords, resetWords } from './boards/words.js';
+import { renderMath, resetMath } from './boards/math.js';
+import { gameStage } from './core/math.js';
 
 /* ---------- 常量 ---------- */
 const SETTINGS_KEY = 'ning.settings'; // 家长设置（含密码状态）
@@ -124,6 +126,7 @@ function toast(msg) {
 const BOARD_RENDERERS = {
   poems: { render: renderPoems, reset: resetPoems },
   words: { render: renderWords, reset: resetWords },
+  math: { render: renderMath, reset: resetMath },
   medals: { render: renderMedals },
 };
 
@@ -229,6 +232,21 @@ function learnedWordMap() {
   return map;
 }
 
+/** 数学进度：{ 阶段 id: [已完成的游戏 id] }（从打卡记录推导） */
+function mathProgress() {
+  const doneGames = {};
+  for (const l of Array.isArray(logs) ? logs : []) {
+    if (l && l.subject === 'math' && l.item) {
+      const st = gameStage(l.item);
+      if (st !== null) {
+        const arr = (doneGames[st] = doneGames[st] || []);
+        if (!arr.includes(l.item)) arr.push(l.item);
+      }
+    }
+  }
+  return doneGames;
+}
+
 /** 确保本周计划已生成；周日生成/刷新复习抽查（当天固定） */
 function ensureWeekPlan() {
   const today = todayStr();
@@ -296,6 +314,7 @@ function renderBoard() {
     today: todayStr,
     getWeekWords: () => (weekPlan && weekPlan.words) || [],
     getLearnedWords: learnedWordMap,
+    getMathProgress: mathProgress,
     go,
   });
 }
