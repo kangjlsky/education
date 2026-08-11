@@ -12,8 +12,10 @@ import { settleWeek, WEEK_BONUS, pendingWeeks } from './core/attendance.js';
 import { buildWeekPlan } from './core/plan.js';
 import { isSunday, dailyTargets, pickPoemReview } from './core/review.js';
 import { POEMS } from './data/poems.js';
+import { WORDS } from './data/words.js';
 import { renderPoems, resetPoems } from './boards/poems.js';
 import { renderMedals } from './boards/medals.js';
+import { renderWords, resetWords } from './boards/words.js';
 
 /* ---------- 常量 ---------- */
 const SETTINGS_KEY = 'ning.settings'; // 家长设置（含密码状态）
@@ -23,10 +25,10 @@ const MEDALS_KEY = 'ning.medals';     // 勋章状态 { redeemed, history }
 const SETTLED_KEY = 'ning.settledWeek'; // 已结算的周（weekStart）
 const WEEK_PLAN_KEY = 'ning.weekPlan';  // 本周计划 { weekStart, poems, words, books, reviewPoems?, reviewDate? }
 
-// 各科内容池（words/books 在识字/英语板块 ticket 实现后加入）
+// 各科内容池（books 在英语板块 ticket 实现后加入）
 const CONTENT_POOL = {
   poems: POEMS.map((p) => p.id),
-  words: [],
+  words: WORDS.map((w) => w.id),
   books: [],
 };
 
@@ -121,6 +123,7 @@ function toast(msg) {
 /* ---------- 板块渲染注册表：已实现的板块在此登记，未登记的走占位 ---------- */
 const BOARD_RENDERERS = {
   poems: { render: renderPoems, reset: resetPoems },
+  words: { render: renderWords, reset: resetWords },
   medals: { render: renderMedals },
 };
 
@@ -215,6 +218,17 @@ function learnedIds() {
   return bySubject;
 }
 
+/** 识字已学映射：{ 字 id: 首次学习日期 }（用于间隔复习） */
+function learnedWordMap() {
+  const map = {};
+  for (const l of Array.isArray(logs) ? logs : []) {
+    if (l && l.subject === 'words' && l.item && !(l.item in map)) {
+      map[l.item] = l.date;
+    }
+  }
+  return map;
+}
+
 /** 确保本周计划已生成；周日生成/刷新复习抽查（当天固定） */
 function ensureWeekPlan() {
   const today = todayStr();
@@ -279,6 +293,9 @@ function renderBoard() {
     getMedals: () => medals,
     getReviewPoems: () => (weekPlan && weekPlan.reviewPoems) || [],
     isReviewDay: () => isSunday(todayStr()),
+    today: todayStr,
+    getWeekWords: () => (weekPlan && weekPlan.words) || [],
+    getLearnedWords: learnedWordMap,
     go,
   });
 }

@@ -1,0 +1,48 @@
+/* =========================================================
+   识字板块 - 字库小样本（幼升小高频字）
+   结构：{ id, char, pic, py, phrase }
+   首期内置 40 个跑通识字闭环，后续内容扩充（ticket 12）扩到 2000 字
+   ========================================================= */
+
+export const WORDS = [
+  { id: 'w001', char: '人', pic: '🧑', py: 'rén', phrase: '人，大人小朋友都是人' },
+  { id: 'w002', char: '口', pic: '👄', py: 'kǒu', phrase: '口，嘴巴也叫口' },
+  { id: 'w003', char: '手', pic: '✋', py: 'shǒu', phrase: '手，小手拍拍' },
+  { id: 'w004', char: '山', pic: '⛰️', py: 'shān', phrase: '山，高高的大山' },
+  { id: 'w005', char: '水', pic: '💧', py: 'shuǐ', phrase: '水，咕咚咕咚喝水' },
+  { id: 'w006', char: '日', pic: '☀️', py: 'rì', phrase: '日，太阳就是日' },
+  { id: 'w007', char: '月', pic: '🌙', py: 'yuè', phrase: '月，弯弯的月亮' },
+  { id: 'w008', char: '花', pic: '🌸', py: 'huā', phrase: '花，香香的小花' },
+  { id: 'w009', char: '鸟', pic: '🐦', py: 'niǎo', phrase: '鸟，小鸟飞飞' },
+  { id: 'w010', char: '天', pic: '🌤️', py: 'tiān', phrase: '天，蓝蓝的天空' },
+  { id: 'w011', char: '上', pic: '⬆️', py: 'shàng', phrase: '上，在上面' },
+  { id: 'w012', char: '下', pic: '⬇️', py: 'xià', phrase: '下，在下面' },
+  { id: 'w013', char: '大', pic: '🐘', py: 'dà', phrase: '大，大象很大' },
+  { id: 'w014', char: '小', pic: '🐜', py: 'xiǎo', phrase: '小，蚂蚁很小' },
+  { id: 'w015', char: '中', pic: '🎯', py: 'zhōng', phrase: '中，在中间' },
+  { id: 'w016', char: '牛', pic: '🐮', py: 'niú', phrase: '牛，老牛哞哞' },
+  { id: 'w017', char: '羊', pic: '🐑', py: 'yáng', phrase: '羊，小羊咩咩' },
+  { id: 'w018', char: '马', pic: '🐴', py: 'mǎ', phrase: '马，小马跑跑' },
+  { id: 'w019', char: '鱼', pic: '🐟', py: 'yú', phrase: '鱼，小鱼游游' },
+  { id: 'w020', char: '虫', pic: '🐛', py: 'chóng', phrase: '虫，小虫爬爬' },
+  { id: 'w021', char: '云', pic: '☁️', py: 'yún', phrase: '云，白云朵朵' },
+  { id: 'w022', char: '风', pic: '🌬️', py: 'fēng', phrase: '风，风吹呼呼' },
+  { id: 'w023', char: '雨', pic: '🌧️', py: 'yǔ', phrase: '雨，下雨啦' },
+  { id: 'w024', char: '火', pic: '🔥', py: 'huǒ', phrase: '火，火苗红红' },
+  { id: 'w025', char: '土', pic: '⛰️', py: 'tǔ', phrase: '土，泥土软软' },
+  { id: 'w026', char: '木', pic: '🌳', py: 'mù', phrase: '木，木头和树' },
+  { id: 'w027', char: '门', pic: '🚪', py: 'mén', phrase: '门，开门关门' },
+  { id: 'w028', char: '车', pic: '🚗', py: 'chē', phrase: '车，小汽车嘀嘀' },
+  { id: 'w029', char: '书', pic: '📚', py: 'shū', phrase: '书，好看的图画书' },
+  { id: 'w030', char: '笔', pic: '✏️', py: 'bǐ', phrase: '笔，画画写字的笔' },
+  { id: 'w031', char: '饭', pic: '🍚', py: 'fàn', phrase: '饭，香喷喷的饭' },
+  { id: 'w032', char: '米', pic: '🍚', py: 'mǐ', phrase: '米，白白的米粒' },
+  { id: 'w033', char: '果', pic: '🍎', py: 'guǒ', phrase: '果，红红的苹果' },
+  { id: 'w034', char: '瓜', pic: '🍉', py: 'guā', phrase: '瓜，甜甜的西瓜' },
+  { id: 'w035', char: '妈', pic: '👩', py: 'mā', phrase: '妈，妈妈的爱' },
+  { id: 'w036', char: '爸', pic: '👨', py: 'bà', phrase: '爸，爸爸的手' },
+  { id: 'w037', char: '爷', pic: '👴', py: 'yé', phrase: '爷，爷爷笑呵呵' },
+  { id: 'w038', char: '奶', pic: '👵', py: 'nǎi', phrase: '奶，奶奶的怀抱' },
+  { id: 'w039', char: '猫', pic: '🐱', py: 'māo', phrase: '猫，小猫喵喵' },
+  { id: 'w040', char: '狗', pic: '🐶', py: 'gǒu', phrase: '狗，小狗汪汪' },
+];

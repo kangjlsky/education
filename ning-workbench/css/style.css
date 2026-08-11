@@ -460,6 +460,82 @@ html, body {
   text-align: center;
 }
 
+/* ---------- 识字板块 ---------- */
+.word-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 3px solid var(--pink);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(58,74,82,0.08);
+  transition: transform 0.12s ease;
+}
+.word-card:active { transform: scale(0.97); }
+.wc-char { font-size: 40px; font-weight: 800; color: var(--blue-deep); min-width: 52px; text-align: center; }
+.wc-pic { font-size: 30px; }
+.wc-info { flex: 1; display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.wc-py { font-size: 16px; color: var(--pink-deep); font-weight: 600; }
+.wc-phrase { font-size: 14px; color: var(--text-light); }
+.word-checkin {
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--pink-deep), #ffb3c1);
+  color: #fff;
+  padding: 8px 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(246,146,161,0.4);
+}
+.word-checkin.ghost { background: #fff; color: var(--pink-deep); border: 2px solid var(--pink); box-shadow: none; }
+.word-checkin:active { transform: scale(0.94); }
+.wc-done { font-size: 15px; font-weight: 600; color: var(--text-light); }
+
+/* ---------- 识字小测 ---------- */
+.quiz-prompt { text-align: center; padding: 14px 0 6px; }
+.quiz-target {
+  font-size: 64px;
+  line-height: 1.3;
+  font-weight: 800;
+  color: var(--blue-deep);
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  margin: 10px auto;
+  max-width: 240px;
+  box-shadow: 0 8px 20px rgba(58,74,82,0.1);
+}
+.quiz-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  padding: 10px 0;
+}
+.quiz-opt {
+  min-height: 96px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--card);
+  font-size: 44px;
+  font-weight: 800;
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(58,74,82,0.1);
+  transition: transform 0.12s ease;
+}
+.quiz-opt:active { transform: scale(0.94); }
+.quiz-opt.wrong {
+  background: #fff0f0;
+  color: #c0392b;
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+.quiz-opt:disabled { cursor: default; }
+
 /* ---------- toast ---------- */
 .toast {
   position: fixed;
