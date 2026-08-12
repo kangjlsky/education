@@ -20,6 +20,7 @@ import { renderMath, resetMath } from './boards/math.js';
 import { renderEnglish, resetEnglish } from './boards/english.js';
 import { renderPen, resetPen } from './boards/pen.js';
 import { renderPet } from './boards/pet.js';
+import { renderParent, resetParent } from './parent.js';
 import { petLevel, newLevels } from './core/pet.js';
 import { gameStage } from './core/math.js';
 import { englishLearnedMap, isBookItem, booksDone } from './core/english.js';
@@ -391,7 +392,10 @@ function render() {
   if (currentView === 'home') renderHome();
   else if (currentView === 'gate') renderGate(false);
   else if (currentView === 'setpwd') renderGate(true);
-  else if (currentView === 'parent') renderParent();
+  else if (currentView === 'parent') {
+    resetParent();
+    renderParent(view, parentCtx());
+  }
   else if (currentView === 'board') renderBoard();
   view.scrollTop = 0;
 }
@@ -622,42 +626,19 @@ function renderGate(isSet) {
   }
 }
 
-/* ---------- 家长模式：后台框架（10/11 填充具体功能） ---------- */
-function renderParent() {
-  view.setAttribute('data-speak', '家长后台');
-  view.innerHTML = `
-    <header class="topbar">
-      <div>
-        <div class="greet">📊 家长后台</div>
-        <div class="greet-sub">密码已开启，数据安全有保障</div>
-      </div>
-      <button class="btn-back" id="parentBack">🏠 返回</button>
-    </header>
-    <div class="panel-card">
-      <h3>🔐 家长密码 <span class="badge">已开启</span></h3>
-      <p class="desc">当前使用 4 位数字密码保护家长后台，孩子无法进入。</p>
-    </div>
-    <div class="panel-card">
-      <h3>📅 数据看板 <span class="badge">建设中</span></h3>
-      <p class="desc">打卡日历、各科进度、宠物成长、勋章记录——即将上线。</p>
-    </div>
-    <div class="panel-card">
-      <h3>⚙️ 自定义设置 <span class="badge">建设中</span></h3>
-      <p class="desc">调整每周任务量、勋章兑换规则、孩子昵称与宠物主题。</p>
-    </div>
-    <div class="panel-card">
-      <h3>📋 每日学习报告 <span class="badge">建设中</span></h3>
-      <p class="desc">每天自动生成学习总结与明日计划。</p>
-    </div>
-    <div class="panel-card">
-      <h3>🎁 勋章兑换 <span class="badge">建设中</span></h3>
-      <p class="desc">孩子攒够勋章后，由家长在这里确认发放奖励。</p>
-    </div>
-    <button class="btn-big pink" id="parentToHome">🎈 回到儿童模式</button>
-  `;
+/* ---------- 家长模式：由 parent.js 提供（导航/看板/报告/设置/兑换/备份） ---------- */
 
-  document.getElementById('parentBack').addEventListener('click', () => go('home'));
-  document.getElementById('parentToHome').addEventListener('click', () => go('home'));
+/** 家长后台上下文（parent.js 使用） */
+function parentCtx() {
+  return {
+    getLogs: () => logs,
+    getScore: () => score,
+    getMedals: () => medals,
+    getWeekPlan: () => weekPlan,
+    speak: (t) => Speak.zh(t),
+    toast,
+    go,
+  };
 }
 
 /* ---------- 板块占位视图 ---------- */
