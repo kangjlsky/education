@@ -98,7 +98,7 @@ function renderDraw(container, ctx) {
       </div>
     </div>
     <div class="pen-actions">
-      <button class="btn-big ghost" id="penClear">🧽 清除重画</button>
+      ${checked ? '' : '<button class="btn-big ghost" id="penClear">🧽 清除重画</button>'}
       ${
         checked
           ? '<button class="btn-big ghost" disabled>🌸 今天已打卡</button>'
@@ -112,16 +112,18 @@ function renderDraw(container, ctx) {
   const completeLayer = document.getElementById('penComplete');
   const checkinBtn = document.getElementById('penCheckin');
 
-  // 初始化会话（第一次进入该字）
-  if (!penSession || penSession.penId !== pen.id) {
-    penSession = { penId: pen.id, shapeSet: extractShape(canvas, g, pen.char), drawnSet: new Set(), complete: false };
-  } else if (checked) {
-    // 已打卡的字直接显示完成态
-    penSession.complete = true;
-  }
+  // 进入描红总是重建会话：
+  // - 今天已打卡的字 → 直接显示完成态
+  // - 未打卡的字 → 全新空白（避免上次 complete 残留导致"没描就显示写得真棒"）
+  penSession = {
+    penId: pen.id,
+    shapeSet: extractShape(canvas, g, pen.char),
+    drawnSet: new Set(),
+    complete: checked,
+  };
 
   drawBase(canvas, g, pen.char);
-  if (penSession.complete || checked) {
+  if (penSession.complete) {
     showComplete(completeLayer, checkinBtn, checked);
   }
 
@@ -173,13 +175,16 @@ function renderDraw(container, ctx) {
   canvas.addEventListener('pointerup', endDraw);
   canvas.addEventListener('pointercancel', endDraw);
 
-  document.getElementById('penClear').addEventListener('click', () => {
-    penSession.drawnSet = new Set();
-    penSession.complete = false;
-    completeLayer.hidden = true;
-    if (checkinBtn) checkinBtn.hidden = true;
-    drawBase(canvas, g, pen.char);
-  });
+  const clearBtn = document.getElementById('penClear');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      penSession.drawnSet = new Set();
+      penSession.complete = false;
+      completeLayer.hidden = true;
+      if (checkinBtn) checkinBtn.hidden = true;
+      drawBase(canvas, g, pen.char);
+    });
+  }
 
   if (checkinBtn) {
     checkinBtn.addEventListener('click', () => {
