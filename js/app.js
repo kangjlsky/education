@@ -100,12 +100,19 @@ const view = document.getElementById('view');
 
 /* ---------- 语音（Web Speech API；增强能力，无声可 100% 操作） ---------- */
 const Speak = {
+  zhVoice: null,
+  enVoice: null,
   init() {
     if (!('speechSynthesis' in window)) return;
-    const load = () => { /* 触发 voices 就绪 */ };
-    load();
+    // voices 在移动端是异步加载的：立即刷新一次 + voiceschanged 时再刷新缓存
+    const refresh = () => {
+      const voices = window.speechSynthesis.getVoices();
+      this.zhVoice = voices.find((v) => v.lang && v.lang.toLowerCase().startsWith('zh')) || null;
+      this.enVoice = voices.find((v) => v.lang && v.lang.toLowerCase().startsWith('en')) || null;
+    };
+    refresh();
     if (window.speechSynthesis.onvoiceschanged !== undefined) {
-      window.speechSynthesis.onvoiceschanged = load;
+      window.speechSynthesis.onvoiceschanged = refresh;
     }
   },
   zh(text) {
@@ -115,9 +122,10 @@ const Speak = {
     u.lang = 'zh-CN';
     u.rate = 0.75;   // 放慢语速，适合低幼
     u.pitch = 1.1;   // 音调略高，更亲切
-    const voices = window.speechSynthesis.getVoices();
-    const v = voices.find((x) => x.lang && x.lang.toLowerCase().startsWith('zh'));
-    if (v) u.voice = v;
+    // 优先用缓存的系统中文 voice（getVoices 异步就绪后由 init 更新）
+    if (this.zhVoice) u.voice = this.zhVoice;
+    // iOS 兼容：speak 前 resume，避免 cancel 后首音被吞
+    window.speechSynthesis.resume();
     window.speechSynthesis.speak(u);
   },
   en(text) {
@@ -127,9 +135,8 @@ const Speak = {
     u.lang = 'en-US';
     u.rate = 0.7;    // 英文放慢更清晰
     u.pitch = 1.1;
-    const voices = window.speechSynthesis.getVoices();
-    const v = voices.find((x) => x.lang && x.lang.toLowerCase().startsWith('en'));
-    if (v) u.voice = v;
+    if (this.enVoice) u.voice = this.enVoice;
+    window.speechSynthesis.resume();
     window.speechSynthesis.speak(u);
   },
   stop() {
