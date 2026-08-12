@@ -18,6 +18,7 @@ import { renderMedals } from './boards/medals.js';
 import { renderWords, resetWords } from './boards/words.js';
 import { renderMath, resetMath } from './boards/math.js';
 import { renderEnglish, resetEnglish } from './boards/english.js';
+import { renderPen, resetPen } from './boards/pen.js';
 import { gameStage } from './core/math.js';
 import { englishLearnedMap, isBookItem, booksDone } from './core/english.js';
 import { ENGLISH_BOOKS } from './data/english.js';
@@ -143,6 +144,7 @@ const BOARD_RENDERERS = {
   words: { render: renderWords, reset: resetWords },
   math: { render: renderMath, reset: resetMath },
   english: { render: renderEnglish, reset: resetEnglish },
+  pen: { render: renderPen, reset: resetPen },
   medals: { render: renderMedals },
 };
 
@@ -271,6 +273,17 @@ function mathProgress() {
   return doneGames;
 }
 
+/** 描红已学字 id（从打卡记录推导） */
+function penLearned() {
+  const ids = [];
+  for (const l of Array.isArray(logs) ? logs : []) {
+    if (l && l.subject === 'pen' && l.item && !ids.includes(l.item)) {
+      ids.push(l.item);
+    }
+  }
+  return ids;
+}
+
 /** 确保本周计划已生成；周日生成/刷新复习抽查（当天固定） */
 function ensureWeekPlan() {
   const today = todayStr();
@@ -339,6 +352,7 @@ function renderBoard() {
     getWeekWords: () => (weekPlan && weekPlan.words) || [],
     getLearnedWords: learnedWordMap,
     getMathProgress: mathProgress,
+    getPenLearned: penLearned,
     getWeekBooks: () => (weekPlan && weekPlan.books) || [],
     getEnglishLearned: () => englishLearnedMap(logs),
     getEnglishBooksDone: () => booksDone(logs),
