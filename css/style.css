@@ -926,6 +926,34 @@ html, body {
   font-weight: 600;
 }
 
+/* ---------- 家长后台表单与兑换 ---------- */
+.form-label { display: block; font-size: 14px; color: var(--text-light); margin: 10px 0 4px; }
+.form-input {
+  width: 100%;
+  border: 2px solid #dde8ee;
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-size: 17px;
+  color: var(--text);
+  background: #fff;
+}
+.form-input:focus { outline: none; border-color: var(--blue); }
+
+.redeem-rule { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.redeem-medals { width: 70px; flex-shrink: 0; }
+.redeem-reward { flex: 1; }
+
+.redeem-pending {
+  background: #fff6f8;
+  border: 2px solid var(--pink);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.rp-info { display: block; font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.rp-actions { display: flex; gap: 10px; margin-top: 10px; }
+.rp-actions .btn-big { flex: 1; min-height: 52px; font-size: 16px; }
+
 /* ---------- toast ---------- */
 .toast {
   position: fixed;

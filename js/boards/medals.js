@@ -35,6 +35,7 @@ export function renderMedals(container, ctx) {
       <p class="desc">还差 <b>${nextIn}</b> 颗星光
         ${earned > 0 ? `（累计获得 ${earned} 枚 · 已兑换 ${redeemed} 枚）` : ''}</p>
     </div>
+    ${redeemSection(ctx, stars, avail)}
     <div class="panel-card">
       <h3>勋章记录</h3>
       <div id="medalHistory"></div>
@@ -65,4 +66,56 @@ export function renderMedals(container, ctx) {
   }
 
   document.getElementById('medalBack').addEventListener('click', () => ctx.go('home'));
+
+  // 申请兑换按钮
+  container.querySelectorAll('[data-apply]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const n = Number(btn.dataset.apply);
+      const reward = btn.dataset.reward;
+      const r = ctx.applyRedeem(n, reward);
+      if (r.ok) {
+        ctx.toast('🎁 已申请，等待家长确认');
+        ctx.speak('已申请兑换，等待爸爸妈妈确认');
+      } else if (r.reason === 'insufficient') {
+        ctx.toast('勋章不够换这个奖励');
+      }
+      renderMedals(container, ctx);
+    });
+  });
+}
+
+/* ---------- 申请兑换区（孩子侧） ---------- */
+function redeemSection(ctx, stars, avail) {
+  if (!ctx.applyRedeem) return '';
+  const cfg = ctx.getConfig ? ctx.getConfig() : null;
+  const rules = (cfg && Array.isArray(cfg.redeem) && cfg.redeem.length) ? cfg.redeem : [];
+  const m = ctx.getMedals() || { pending: [] };
+  const pendingCount = (Array.isArray(m.pending) ? m.pending : []).length;
+
+  const buttons = rules
+    .map((r) => `<button class="btn-big ghost" data-apply="${r.medals}" data-reward="${escAttr(r.reward)}">🎖️ ${r.medals} 枚 → ${esc(r.reward)}</button>`)
+    .join('');
+
+  return `
+    <div class="panel-card">
+      <h3>🎁 申请兑换 ${pendingCount > 0 ? `<span class="badge">${pendingCount} 个等待家长确认</span>` : ''}</h3>
+      ${avail <= 0 ? '<p class="desc">还没有可用勋章，先集星光吧！</p>' : `<p class="desc">可用勋章 ${avail} 枚，点一下告诉爸爸妈妈想要的奖励：</p>${buttons}`}
+    </div>`;
+}
+
+/** HTML 属性转义 */
+function escAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/"/g, '&quot;')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/** HTML 文本转义 */
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }

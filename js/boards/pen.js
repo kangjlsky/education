@@ -7,8 +7,6 @@
 import { PEN_CHARS } from '../data/pen.js';
 import { isComplete, addSegmentToSet } from '../core/pen.js';
 
-const PEN_PER_DAY = 2; // 每日任务数（家长后台可配置化前先固定）
-
 let mode = 'main';      // main | draw
 let activePenId = null;
 let penSession = null;  // { shapeSet, drawnSet, complete, checked }
@@ -29,8 +27,9 @@ export function renderPen(container, ctx) {
 function renderMain(container, ctx) {
   const today = ctx.today();
   const learned = ctx.getPenLearned() || [];
+  const penPerDay = ctx.getPenDaily ? ctx.getPenDaily() : 2;
   // 未学锚定 + 今日已打卡保留
-  const fresh = PEN_CHARS.filter((p) => !learned.includes(p.id)).slice(0, PEN_PER_DAY);
+  const fresh = PEN_CHARS.filter((p) => !learned.includes(p.id)).slice(0, penPerDay);
   const doneToday = PEN_CHARS.filter((p) => ctx.hasCheckin('pen', p.id));
   const shown = [...fresh, ...doneToday.filter((p) => !fresh.includes(p))];
 
@@ -49,12 +48,12 @@ function renderMain(container, ctx) {
     })
     .join('');
 
-  container.setAttribute('data-speak', `控笔，今天描 ${PEN_PER_DAY} 个字`);
+  container.setAttribute('data-speak', `控笔，今天描 ${penPerDay} 个字`);
   container.innerHTML = `
     <header class="topbar">
       <div>
         <div class="greet">🖍️ 控笔</div>
-        <div class="greet-sub">今天描 ${PEN_PER_DAY} 个字，练练小手</div>
+        <div class="greet-sub">今天描 ${penPerDay} 个字，练练小手</div>
       </div>
       <button class="btn-back" id="penBack">🏠 返回</button>
     </header>

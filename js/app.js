@@ -22,6 +22,10 @@ import { renderPen, resetPen } from './boards/pen.js';
 import { renderPet } from './boards/pet.js';
 import { renderParent, resetParent } from './parent.js';
 import { petLevel, newLevels } from './core/pet.js';
+import { normalizeConfig } from './core/settings.js';
+import { buildBackup, parseBackup, validateBackupData } from './core/backup.js';
+import { applyRedeem, confirmRedeem, rejectRedeem } from './core/medals.js';
+import { changePassword as changePwd } from './core/password.js';
 import { gameStage } from './core/math.js';
 import { englishLearnedMap, isBookItem, booksDone } from './core/english.js';
 import { ENGLISH_BOOKS } from './data/english.js';
@@ -33,6 +37,7 @@ const LOGS_KEY = 'ning.logs';         // 打卡记录数组
 const MEDALS_KEY = 'ning.medals';     // 勋章状态 { redeemed, history }
 const SETTLED_KEY = 'ning.settledWeek'; // 已结算的周（weekStart）
 const WEEK_PLAN_KEY = 'ning.weekPlan';  // 本周计划 { weekStart, poems, words, books, reviewPoems?, reviewDate? }
+const CONFIG_KEY = 'ning.config';       // 家长设置（任务量/兑换档位/昵称/宠物主题）
 
 // 各科内容池（全部已接线）
 const CONTENT_POOL = {
@@ -41,8 +46,7 @@ const CONTENT_POOL = {
   books: ENGLISH_BOOKS.map((b) => b.id),
 };
 
-// 每周任务量（ticket 11 家长后台可配置）
-const WEEK_COUNTS = { poems: 3, words: 10, books: 3 };
+// 每周任务量：由家长设置 config.weekly 驱动（ensureWeekPlan 使用）
 
 /* ---------- 6 大板块配置（占位；后续板块 ticket 填充实现） ---------- */
 const BOARDS = [
@@ -81,12 +85,14 @@ let lockTimer = null;       // 锁定倒计时定时器
 let medals = Store.load(MEDALS_KEY, { redeemed: 0, history: [] }); // 勋章状态
 let settledWeek = Store.load(SETTLED_KEY, null); // 已结算周
 let weekPlan = Store.load(WEEK_PLAN_KEY, null);  // 本周计划
+let config = normalizeConfig(Store.load(CONFIG_KEY, null)); // 家长设置
 let lastMedalCelebrateAt = 0; // 最近一次勋章庆祝开始时间（用于宠物升级语音排队）
 
 // 存储健壮性：脏数据（旧版本/被篡改）规范化，避免运行期崩溃
 if (!medals || typeof medals !== 'object' || Array.isArray(medals)) medals = { redeemed: 0, history: [] };
 if (!Number.isInteger(medals.redeemed) || medals.redeemed < 0) medals.redeemed = 0;
 if (!Array.isArray(medals.history)) medals.history = [];
+if (!Array.isArray(medals.pending)) medals.pending = [];
 if (typeof settledWeek !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(settledWeek)) settledWeek = null;
 if (!weekPlan || typeof weekPlan !== 'object' || Array.isArray(weekPlan) || typeof weekPlan.weekStart !== 'string') weekPlan = null;
 
@@ -309,7 +315,7 @@ function ensureWeekPlan() {
   const today = todayStr();
   const monday = mondayOf(today);
   if (!weekPlan || weekPlan.weekStart !== monday) {
-    weekPlan = buildWeekPlan(monday, WEEK_COUNTS, CONTENT_POOL, learnedIds());
+    weekPlan = buildWeekPlan(monday, config.weekly, CONTENT_POOL, learnedIds());
     delete weekPlan.reviewPoems; // 换周清除旧复习抽查
     delete weekPlan.reviewDate;
     Store.save(WEEK_PLAN_KEY, weekPlan);
@@ -373,7 +379,10 @@ function renderBoard() {
     getLearnedWords: learnedWordMap,
     getMathProgress: mathProgress,
     getPenLearned: penLearned,
+    getPenDaily: () => config.weekly.penDaily || 2,
     getFeedCount: feedCountToday,
+    getConfig: () => config,
+    applyRedeem: doApplyRedeem,
     getWeekBooks: () => (weekPlan && weekPlan.books) || [],
     getEnglishLearned: () => englishLearnedMap(logs),
     getEnglishBooksDone: () => booksDone(logs),
@@ -635,10 +644,83 @@ function parentCtx() {
     getScore: () => score,
     getMedals: () => medals,
     getWeekPlan: () => weekPlan,
+    getConfig: () => config,
+    saveConfig: (c) => {
+      config = normalizeConfig(c);
+      Store.save(CONFIG_KEY, config);
+    },
+    applyRedeem: doApplyRedeem,
+    confirmRedeem: doConfirmRedeem,
+    rejectRedeem: doRejectRedeem,
+    exportBackup: doExportBackup,
+    importBackup: doImportBackup,
+    changePassword: doChangePassword,
     speak: (t) => Speak.zh(t),
     toast,
     go,
   };
+}
+
+/* ---------- 勋章兑换（申请/确认/拒绝，均持久化） ---------- */
+function doApplyRedeem(n, reward) {
+  // 时间戳 + 随机后缀，保证申请 id 唯一
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const r = applyRedeem(medals, score, n, reward, todayStr(), id);
+  if (r.ok) {
+    medals = r.medals;
+    Store.save(MEDALS_KEY, medals);
+  }
+  return r;
+}
+
+function doConfirmRedeem(id) {
+  const r = confirmRedeem(medals, score, id, todayStr());
+  if (r.ok) {
+    medals = r.medals;
+    Store.save(MEDALS_KEY, medals);
+  }
+  return r;
+}
+
+function doRejectRedeem(id) {
+  const r = rejectRedeem(medals, id);
+  if (r.ok) {
+    medals = r.medals;
+    Store.save(MEDALS_KEY, medals);
+  }
+  return r;
+}
+
+/* ---------- 数据备份（导出/导入） ---------- */
+function doExportBackup() {
+  return buildBackup({ settings, config, logs, score, medals, settledWeek, weekPlan });
+}
+
+function doImportBackup(json) {
+  const r = parseBackup(json);
+  if (!r.ok) return r;
+  const d = r.data;
+  if (!validateBackupData(d).ok) {
+    return { ok: false, reason: 'invalid' };
+  }
+  Store.save(SETTINGS_KEY, d.settings || settings);
+  Store.save(CONFIG_KEY, d.config || config);
+  Store.save(LOGS_KEY, d.logs);
+  Store.save(SCORE_KEY, Number(d.score) || 0);
+  Store.save(MEDALS_KEY, d.medals || { redeemed: 0, history: [], pending: [] });
+  Store.save(SETTLED_KEY, d.settledWeek || null);
+  Store.save(WEEK_PLAN_KEY, d.weekPlan || null);
+  return { ok: true };
+}
+
+/* ---------- 家长密码修改 ---------- */
+function doChangePassword(newPwd) {
+  const r = changePwd(newPwd, settings);
+  if (r.ok) {
+    settings = r.state;
+    Store.save(SETTINGS_KEY, settings);
+  }
+  return r;
 }
 
 /* ---------- 板块占位视图 ---------- */

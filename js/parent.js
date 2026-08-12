@@ -241,57 +241,247 @@ function renderReport(container, ctx) {
   });
 }
 
-/* ---------- 设置 / 兑换 / 备份（ticket 11 填充） ---------- */
+/* ---------- 自定义设置 ---------- */
 function renderSettings(container, ctx) {
+  const cfg = ctx.getConfig();
+  const weekly = cfg.weekly;
+
   container.setAttribute('data-speak', '自定义设置');
   container.innerHTML = `
     <header class="topbar">
       <div>
         <div class="greet">⚙️ 自定义设置</div>
-        <div class="greet-sub">任务量 · 兑换规则 · 昵称 · 密码</div>
+        <div class="greet-sub">修改后下周生效</div>
       </div>
       <button class="btn-back" id="settingsBack">⬅️ 返回</button>
     </header>
-    <div class="empty"><span class="big">🧰</span>建设中，很快上线！</div>
+    <div class="panel-card">
+      <h3>🧒 孩子信息</h3>
+      <label class="form-label">昵称</label>
+      <input class="form-input" id="setName" value="${esc(cfg.childName)}" maxlength="8">
+      <label class="form-label">宠物主题</label>
+      <select class="form-input" id="setTheme">
+        <option value="dino" ${cfg.petTheme === 'dino' ? 'selected' : ''}>🦖 小恐龙</option>
+        <option value="cat" ${cfg.petTheme === 'cat' ? 'selected' : ''}>🐱 小猫咪</option>
+        <option value="dog" ${cfg.petTheme === 'dog' ? 'selected' : ''}>🐶 小狗狗</option>
+      </select>
+    </div>
+    <div class="panel-card">
+      <h3>📆 每周任务量</h3>
+      <label class="form-label">每周古诗（首）</label>
+      <input class="form-input" type="number" min="1" max="50" id="setPoems" value="${weekly.poems}">
+      <label class="form-label">每周生字（个）</label>
+      <input class="form-input" type="number" min="1" max="50" id="setWords" value="${weekly.words}">
+      <label class="form-label">每周绘本（本）</label>
+      <input class="form-input" type="number" min="1" max="50" id="setBooks" value="${weekly.books}">
+      <label class="form-label">每日描红（个）</label>
+      <input class="form-input" type="number" min="1" max="50" id="setPen" value="${weekly.penDaily}">
+    </div>
+    <div class="panel-card">
+      <h3>🎁 勋章兑换档位</h3>
+      ${cfg.redeem
+        .map(
+          (r, i) => `
+        <div class="redeem-rule">
+          <input class="form-input redeem-medals" type="number" min="1" max="99" value="${r.medals}" data-i="${i}">
+          <span>枚 =</span>
+          <input class="form-input redeem-reward" value="${esc(r.reward)}" maxlength="12" data-i="${i}">
+        </div>`
+        )
+        .join('')}
+    </div>
+    <div class="panel-card">
+      <h3>🔐 修改家长密码</h3>
+      <input class="form-input" type="password" inputmode="numeric" maxlength="4" id="setNewPwd" placeholder="新密码（4 位数字）">
+      <button class="btn-big ghost" id="setPwdBtn" style="margin-top:10px;">保存新密码</button>
+    </div>
+    <button class="btn-big pink" id="settingsSave">💾 保存全部设置</button>
   `;
+
+  const collect = () => {
+    const num = (id) => Number(document.getElementById(id).value) || 0;
+    const redeem = Array.from(document.querySelectorAll('.redeem-medals')).map((el, i) => ({
+      medals: Number(el.value) || 1,
+      reward: document.querySelectorAll('.redeem-reward')[i].value.trim() || '小奖励',
+    }));
+    return {
+      childName: document.getElementById('setName').value.trim() || '柠柠',
+      petTheme: document.getElementById('setTheme').value,
+      weekly: {
+        poems: num('setPoems'),
+        words: num('setWords'),
+        books: num('setBooks'),
+        penDaily: num('setPen'),
+      },
+      redeem,
+    };
+  };
+
+  document.getElementById('settingsSave').addEventListener('click', () => {
+    ctx.saveConfig(collect());
+    ctx.toast('✅ 设置已保存，下周生效');
+    ctx.speak('设置已保存');
+  });
+
+  document.getElementById('setPwdBtn').addEventListener('click', () => {
+    const pwd = document.getElementById('setNewPwd').value;
+    const r = ctx.changePassword(pwd);
+    if (r.ok) {
+      ctx.toast('✅ 密码已更新');
+      document.getElementById('setNewPwd').value = '';
+    } else if (r.reason === 'same-as-default') {
+      ctx.toast('不能使用初始密码 0000');
+    } else {
+      ctx.toast('密码需为 4 位数字');
+    }
+  });
+
   document.getElementById('settingsBack').addEventListener('click', () => {
     view = 'home';
     renderParent(container, ctx);
   });
 }
 
+/* ---------- 勋章兑换确认 ---------- */
 function renderRedeem(container, ctx) {
+  const stars = ctx.getScore();
+  const medals = ctx.getMedals() || { redeemed: 0, history: [], pending: [] };
+  const cfg = ctx.getConfig();
+  const avail = medalsAvailable(stars, medals.redeemed);
+  const pending = Array.isArray(medals.pending) ? medals.pending : [];
+
+  const pendingRows = pending
+    .map(
+      (p, i) => `
+      <div class="redeem-pending">
+        <span class="rp-info">🎖️ ${p.n} 枚 → ${esc(p.reward)}（${p.date}）</span>
+        <span class="badge">等待家长确认</span>
+        <div class="rp-actions">
+          <button class="btn-big" data-confirm="${i}">✅ 确认发放</button>
+          <button class="btn-big ghost" data-reject="${i}">✖️ 拒绝</button>
+        </div>
+      </div>`
+    )
+    .join('');
+
   container.setAttribute('data-speak', '勋章兑换');
   container.innerHTML = `
     <header class="topbar">
       <div>
         <div class="greet">🎁 勋章兑换</div>
-        <div class="greet-sub">确认孩子的兑换申请</div>
+        <div class="greet-sub">可用勋章：🎖️ ${avail} 枚</div>
       </div>
       <button class="btn-back" id="redeemBack">⬅️ 返回</button>
     </header>
-    <div class="empty"><span class="big">🎁</span>建设中，很快上线！</div>
+    <div class="panel-card">
+      <h3>📋 待确认申请</h3>
+      ${pendingRows || '<p class="desc">暂无待确认的兑换申请。</p>'}
+    </div>
+    <div class="panel-card">
+      <h3>💡 兑换档位</h3>
+      ${cfg.redeem.map((r) => `<p class="desc">🎖️ ${r.medals} 枚 = ${esc(r.reward)}</p>`).join('')}
+      <p class="desc">孩子攒够勋章后可申请兑换，家长在这里确认发放。</p>
+    </div>
   `;
+
+  container.querySelectorAll('[data-confirm]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const p = pending[Number(btn.dataset.confirm)];
+      const r = ctx.confirmRedeem(p.id);
+      if (r.ok) {
+        ctx.toast('✅ 已确认发放');
+        ctx.speak('已确认发放奖励');
+      } else if (r.reason === 'insufficient') {
+        ctx.toast('勋章不足，无法发放');
+      }
+      renderRedeem(container, ctx);
+    });
+  });
+  container.querySelectorAll('[data-reject]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const p = pending[Number(btn.dataset.reject)];
+      ctx.rejectRedeem(p.id);
+      ctx.toast('已拒绝该申请');
+      renderRedeem(container, ctx);
+    });
+  });
   document.getElementById('redeemBack').addEventListener('click', () => {
     view = 'home';
     renderParent(container, ctx);
   });
 }
 
+/* ---------- 数据备份 ---------- */
 function renderBackup(container, ctx) {
   container.setAttribute('data-speak', '数据备份');
   container.innerHTML = `
     <header class="topbar">
       <div>
         <div class="greet">💾 数据备份</div>
-        <div class="greet-sub">导出 / 导入 JSON 备份</div>
+        <div class="greet-sub">导出备份 · 换机/清数据后导入恢复</div>
       </div>
       <button class="btn-back" id="backupBack">⬅️ 返回</button>
     </header>
-    <div class="empty"><span class="big">💾</span>建设中，很快上线！</div>
+    <div class="panel-card">
+      <h3>📤 导出备份</h3>
+      <p class="desc">下载包含全部学习进度、星光、勋章、设置的 JSON 文件。</p>
+      <button class="btn-big" id="backupExport">📤 导出 JSON</button>
+    </div>
+    <div class="panel-card">
+      <h3>📥 导入恢复</h3>
+      <p class="desc">选择之前导出的备份文件，恢复后页面将自动刷新。</p>
+      <label class="btn-big ghost" style="display:block;text-align:center;cursor:pointer;">📥 选择备份文件
+        <input type="file" id="backupFile" accept=".json,application/json" hidden>
+      </label>
+    </div>
   `;
+
+  document.getElementById('backupExport').addEventListener('click', () => {
+    const json = ctx.exportBackup();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ning-backup-${todayLocal()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    ctx.toast('📤 备份已导出');
+  });
+
+  document.getElementById('backupFile').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const r = ctx.importBackup(String(reader.result));
+      if (r.ok) {
+        ctx.toast('✅ 恢复成功，正在刷新…');
+        setTimeout(() => location.reload(), 800);
+      } else {
+        ctx.toast('❌ 备份文件无效');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
   document.getElementById('backupBack').addEventListener('click', () => {
     view = 'home';
     renderParent(container, ctx);
   });
+}
+
+/** 当前日期（备份文件名用） */
+function todayLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** HTML 转义（设置表单回显等用户输入） */
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
