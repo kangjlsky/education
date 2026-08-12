@@ -17,7 +17,10 @@ import { renderPoems, resetPoems } from './boards/poems.js';
 import { renderMedals } from './boards/medals.js';
 import { renderWords, resetWords } from './boards/words.js';
 import { renderMath, resetMath } from './boards/math.js';
+import { renderEnglish, resetEnglish } from './boards/english.js';
 import { gameStage } from './core/math.js';
+import { englishLearnedMap, isBookItem, booksDone } from './core/english.js';
+import { ENGLISH_BOOKS } from './data/english.js';
 
 /* ---------- 常量 ---------- */
 const SETTINGS_KEY = 'ning.settings'; // 家长设置（含密码状态）
@@ -27,11 +30,11 @@ const MEDALS_KEY = 'ning.medals';     // 勋章状态 { redeemed, history }
 const SETTLED_KEY = 'ning.settledWeek'; // 已结算的周（weekStart）
 const WEEK_PLAN_KEY = 'ning.weekPlan';  // 本周计划 { weekStart, poems, words, books, reviewPoems?, reviewDate? }
 
-// 各科内容池（books 在英语板块 ticket 实现后加入）
+// 各科内容池（全部已接线）
 const CONTENT_POOL = {
   poems: POEMS.map((p) => p.id),
   words: WORDS.map((w) => w.id),
-  books: [],
+  books: ENGLISH_BOOKS.map((b) => b.id),
 };
 
 // 每周任务量（ticket 11 家长后台可配置）
@@ -106,6 +109,18 @@ const Speak = {
     if (v) u.voice = v;
     window.speechSynthesis.speak(u);
   },
+  en(text) {
+    if (!('speechSynthesis' in window) || !text) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US';
+    u.rate = 0.7;    // 英文放慢更清晰
+    u.pitch = 1.1;
+    const voices = window.speechSynthesis.getVoices();
+    const v = voices.find((x) => x.lang && x.lang.toLowerCase().startsWith('en'));
+    if (v) u.voice = v;
+    window.speechSynthesis.speak(u);
+  },
   stop() {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   },
@@ -127,6 +142,7 @@ const BOARD_RENDERERS = {
   poems: { render: renderPoems, reset: resetPoems },
   words: { render: renderWords, reset: resetWords },
   math: { render: renderMath, reset: resetMath },
+  english: { render: renderEnglish, reset: resetEnglish },
   medals: { render: renderMedals },
 };
 
@@ -210,11 +226,19 @@ function hasCheckinToday(subject, item) {
 
 /* ---------- 周计划（生成/复习抽查/今日任务） ---------- */
 
-/** 从打卡记录推导各科已学 id */
+/** 从打卡记录推导各科已学 id（英语绘本归入 books，英语单词不进入周计划） */
 function learnedIds() {
   const bySubject = { poems: [], words: [], books: [] };
   for (const l of Array.isArray(logs) ? logs : []) {
-    if (l && bySubject[l.subject] && !bySubject[l.subject].includes(l.item)) {
+    if (!l) continue;
+    if (l.subject === 'english') {
+      if (l.item && isBookItem(l.item) && !bySubject.books.includes(l.item)) {
+        bySubject.books.push(l.item);
+      }
+      continue;
+    }
+    if (l.subject === 'math') continue; // 数学不进周计划
+    if (bySubject[l.subject] && !bySubject[l.subject].includes(l.item)) {
       bySubject[l.subject].push(l.item);
     }
   }
@@ -315,6 +339,10 @@ function renderBoard() {
     getWeekWords: () => (weekPlan && weekPlan.words) || [],
     getLearnedWords: learnedWordMap,
     getMathProgress: mathProgress,
+    getWeekBooks: () => (weekPlan && weekPlan.books) || [],
+    getEnglishLearned: () => englishLearnedMap(logs),
+    getEnglishBooksDone: () => booksDone(logs),
+    speakEn: (t) => Speak.en(t),
     go,
   });
 }

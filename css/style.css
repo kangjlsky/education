@@ -621,6 +621,96 @@ html, body {
   box-shadow: 0 6px 16px rgba(58,74,82,0.08);
 }
 
+/* ---------- 英语板块 ---------- */
+.en-word {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 3px solid var(--blue);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  box-shadow: 0 6px 16px rgba(58,74,82,0.08);
+}
+.en-sound {
+  border: none;
+  background: #e8f6fc;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.en-sound:active { transform: scale(0.9); }
+.enw-char { font-size: 24px; font-weight: 800; color: var(--blue-deep); }
+.enw-pic { font-size: 26px; }
+.enw-info { flex: 1; text-align: left; }
+.enw-cn { font-size: 14px; color: var(--text-light); }
+
+.book-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: var(--card);
+  border: 3px solid var(--pink);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 10px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(58,74,82,0.08);
+  transition: transform 0.12s ease;
+  text-align: left;
+}
+.book-card:active { transform: scale(0.97); }
+.bk-ico { font-size: 28px; }
+.bk-title { flex: 1; }
+.bk-status { font-size: 14px; font-weight: 700; color: var(--pink-deep); }
+.bk-status.done { color: var(--text-light); }
+
+.review-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: #fff6f8;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 8px 14px;
+  margin: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.review-word:active { transform: scale(0.95); }
+.rw-cn { color: var(--text-light); font-size: 13px; }
+
+.book-page { text-align: center; padding: 12px 0 4px; }
+.book-ico { font-size: 84px; line-height: 1.3; }
+.book-sentence {
+  border: 3px solid var(--blue);
+  background: var(--card);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 16px;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 12px auto;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(58,74,82,0.08);
+  width: 100%;
+}
+.book-sentence:active { transform: scale(0.97); }
+.book-cn { font-size: 16px; color: var(--text-light); }
+.book-nav { display: flex; gap: 12px; margin-top: 16px; }
+.book-nav .btn-big { flex: 1; }
+.book-nav .btn-big:disabled { opacity: 0.4; }
+
 /* ---------- toast ---------- */
 .toast {
   position: fixed;
