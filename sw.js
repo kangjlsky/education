@@ -5,7 +5,7 @@
    首次联网访问后自动进入缓存，之后断网可用。
    ========================================================= */
 
-const CACHE = 'ning-v8';
+const CACHE = 'ning-v9';
 
 const PRECACHE = [
   './',
@@ -24,11 +24,13 @@ const PRECACHE = [
   './js/core/math.js',
   './js/core/english.js',
   './js/core/pen.js',
+  './js/core/pet.js',
   './js/boards/poems.js',
   './js/boards/words.js',
   './js/boards/math.js',
   './js/boards/english.js',
   './js/boards/pen.js',
+  './js/boards/pet.js',
   './js/boards/medals.js',
   './js/data/poems.js',
   './js/data/words.js',

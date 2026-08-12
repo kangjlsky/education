@@ -19,6 +19,8 @@ import { renderWords, resetWords } from './boards/words.js';
 import { renderMath, resetMath } from './boards/math.js';
 import { renderEnglish, resetEnglish } from './boards/english.js';
 import { renderPen, resetPen } from './boards/pen.js';
+import { renderPet } from './boards/pet.js';
+import { petLevel, newLevels } from './core/pet.js';
 import { gameStage } from './core/math.js';
 import { englishLearnedMap, isBookItem, booksDone } from './core/english.js';
 import { ENGLISH_BOOKS } from './data/english.js';
@@ -78,6 +80,7 @@ let lockTimer = null;       // 锁定倒计时定时器
 let medals = Store.load(MEDALS_KEY, { redeemed: 0, history: [] }); // 勋章状态
 let settledWeek = Store.load(SETTLED_KEY, null); // 已结算周
 let weekPlan = Store.load(WEEK_PLAN_KEY, null);  // 本周计划
+let lastMedalCelebrateAt = 0; // 最近一次勋章庆祝开始时间（用于宠物升级语音排队）
 
 // 存储健壮性：脏数据（旧版本/被篡改）规范化，避免运行期崩溃
 if (!medals || typeof medals !== 'object' || Array.isArray(medals)) medals = { redeemed: 0, history: [] };
@@ -145,6 +148,7 @@ const BOARD_RENDERERS = {
   math: { render: renderMath, reset: resetMath },
   english: { render: renderEnglish, reset: resetEnglish },
   pen: { render: renderPen, reset: resetPen },
+  pet: { render: renderPet },
   medals: { render: renderMedals },
 };
 
@@ -166,7 +170,7 @@ function checkin(subject, item) {
   return r;
 }
 
-/** 统一加星光：持久化 + 检测新勋章并庆祝 */
+/** 统一加星光：持久化 + 检测新勋章/宠物升级并庆祝 */
 function awardStars(delta, date) {
   const before = score;
   score += delta;
@@ -176,6 +180,14 @@ function awardStars(delta, date) {
     medals.history.push({ date, type: 'earn', n: gained, stars: score });
     Store.save(MEDALS_KEY, medals);
     celebrateMedal(gained);
+  }
+  // 宠物升级庆祝（跨过 10 的倍数）
+  if (newLevels(before, score) > 0) {
+    const lvl = petLevel(score);
+    toast(`🐾 宠物升到 ${lvl} 级啦！`);
+    // 延后播报：确保勋章庆祝语音（600ms 起播，约 2s 时长）播完后再说
+    const delay = Math.max(2000, lastMedalCelebrateAt + 3000 - Date.now());
+    setTimeout(() => Speak.zh(`宠物升到 ${lvl} 级啦，好棒！`), delay);
   }
 }
 
@@ -216,6 +228,7 @@ function celebrateMedal(n) {
   badge.textContent = `🎖️ 获得勋章 ×${n}`;
   overlay.appendChild(badge);
   document.body.appendChild(overlay);
+  lastMedalCelebrateAt = Date.now();
   setTimeout(() => overlay.remove(), 2600);
   // 延后播报，避免被打卡后的即时语音覆盖（勋章庆祝优先级最高）
   setTimeout(() => Speak.zh(`太棒了！获得 ${n} 枚勋章！`), 600);
@@ -282,6 +295,12 @@ function penLearned() {
     }
   }
   return ids;
+}
+
+/** 今日喂食次数 = 今日打卡次数（宠物每次打卡自动喂食） */
+function feedCountToday() {
+  const today = todayStr();
+  return (Array.isArray(logs) ? logs : []).filter((l) => l && l.date === today).length;
 }
 
 /** 确保本周计划已生成；周日生成/刷新复习抽查（当天固定） */
@@ -353,6 +372,7 @@ function renderBoard() {
     getLearnedWords: learnedWordMap,
     getMathProgress: mathProgress,
     getPenLearned: penLearned,
+    getFeedCount: feedCountToday,
     getWeekBooks: () => (weekPlan && weekPlan.books) || [],
     getEnglishLearned: () => englishLearnedMap(logs),
     getEnglishBooksDone: () => booksDone(logs),
@@ -438,8 +458,7 @@ function renderHome() {
   });
 
   document.getElementById('petBtn').addEventListener('click', () => {
-    Speak.zh('宠物在睡觉，后面的版本会醒过来哦');
-    toast('🦖 宠物在睡觉～后面的版本会醒过来');
+    go('board', 'pet');
   });
 
   document.getElementById('parentGate').addEventListener('click', () => {
