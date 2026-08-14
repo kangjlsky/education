@@ -770,6 +770,9 @@ html, body {
   border-radius: var(--radius);
   pointer-events: none;
 }
+/* 关键：display:flex 会覆盖浏览器对 hidden 属性的默认 display:none，
+   必须显式声明隐藏规则，否则"写得真棒"弹窗会一直显示 */
+.pen-complete[hidden] { display: none; }
 .pc-emoji { font-size: 56px; }
 .pc-text { font-size: 26px; font-weight: 800; color: var(--pink-deep); }
 .pen-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
