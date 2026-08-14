@@ -10,9 +10,29 @@ import {
   isStageUnlocked,
   makeCountQuestion,
   makeCompareQuestion,
+  makeShapeFindQuestion,
+  makeShapeCountQuestion,
+  makeAddQuestion,
+  makeSubQuestion,
+  makeMixArithQuestion,
+  makeClockQuestion,
+  makeMoneyValueQuestion,
+  makeMoneyShopQuestion,
 } from '../core/math.js';
 
-const QUESTION_MAKERS = { count: makeCountQuestion, compare: makeCompareQuestion };
+const QUESTION_MAKERS = {
+  count: makeCountQuestion,
+  compare: makeCompareQuestion,
+  shape_find: makeShapeFindQuestion,
+  shape_count: makeShapeCountQuestion,
+  add10: () => makeAddQuestion(10),
+  sub10: () => makeSubQuestion(10),
+  mix20: () => makeMixArithQuestion(20),
+  clock_hour: () => makeClockQuestion(false),
+  clock_half: () => makeClockQuestion(true),
+  money_value: makeMoneyValueQuestion,
+  money_shop: makeMoneyShopQuestion,
+};
 
 let mode = 'main';        // main | stage | play | done
 let activeStage = null;
@@ -173,27 +193,9 @@ function renderPlay(container, ctx) {
   }
   const meta = GAME_META[activeGame];
   const q = session.questions[session.index];
+  const type = meta.type;
 
   container.setAttribute('data-speak', meta.prompt);
-  const body =
-    activeGame === 'count'
-      ? `
-      <div class="quiz-target">${q.emojis}</div>
-      <div class="quiz-options quiz-options-num">
-        ${q.options.map((n, i) => `<button class="quiz-opt num" data-i="${i}">${n}</button>`).join('')}
-      </div>`
-      : `
-      <div class="compare-row">
-        <div class="compare-side">
-          <div class="compare-emoji">${q.emoji.repeat(q.leftCount)}</div>
-          <button class="btn-big ghost" data-side="left">⬅️ 左边多</button>
-        </div>
-        <div class="compare-side">
-          <div class="compare-emoji">${q.emoji.repeat(q.rightCount)}</div>
-          <button class="btn-big ghost" data-side="right">右边多 ➡️</button>
-        </div>
-      </div>`;
-
   container.innerHTML = `
     <header class="topbar">
       <div>
@@ -202,14 +204,26 @@ function renderPlay(container, ctx) {
       </div>
       <button class="btn-back" id="playBack">⬅️ 返回</button>
     </header>
-    ${body}
+    ${buildPlayBody(type, q)}
     <p class="hint">第 ${session.index + 1} / ${session.questions.length} 题 · 答对 ${session.correct} 题</p>
   `;
 
-  container.querySelectorAll('.quiz-opt').forEach((btn) => {
+  // 温柔提示文案（按游戏类型）
+  const hintText =
+    type === 'side'
+      ? '再数数看，哪边更多呢？'
+      : type === 'arith'
+        ? '再算算看？'
+        : type === 'clock'
+          ? '再看看钟表'
+          : type === 'money' || type === 'shop'
+            ? '再数数钱'
+            : '再想想，换一个试试～';
+
+  // 统一选项判定：data-val === 答案
+  container.querySelectorAll('[data-val]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const val = q.options[Number(btn.dataset.i)];
-      if (val === q.answer) {
+      if (String(btn.dataset.val) === String(q.answer)) {
         ctx.starFlyAt(btn);
         session.correct += 1;
         session.index += 1;
@@ -223,27 +237,7 @@ function renderPlay(container, ctx) {
       } else {
         btn.disabled = true;
         btn.classList.add('wrong');
-        ctx.speak('再想想，换一个试试～');
-      }
-    });
-  });
-  container.querySelectorAll('[data-side]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      if (btn.dataset.side === q.answer) {
-        ctx.starFlyAt(btn);
-        session.correct += 1;
-        session.index += 1;
-        if (session.index >= session.questions.length) {
-          mode = 'done';
-          ctx.speak(session.correct === session.questions.length ? '全部答对，太厉害了！' : `答对 ${session.correct} 题，继续加油`);
-        } else {
-          ctx.speak('答对啦，真棒！');
-        }
-        renderPlay(container, ctx);
-      } else {
-        btn.disabled = true;
-        btn.classList.add('wrong');
-        ctx.speak('再数数看，哪边更多呢？');
+        ctx.speak(hintText);
       }
     });
   });
@@ -251,6 +245,55 @@ function renderPlay(container, ctx) {
     mode = 'stage';
     renderMath(container, ctx);
   });
+}
+
+/** 按游戏类型生成题目 body */
+function buildPlayBody(type, q) {
+  if (type === 'side') {
+    return `
+      <div class="compare-row">
+        <div class="compare-side">
+          <div class="compare-emoji">${q.emoji.repeat(q.leftCount)}</div>
+          <button class="btn-big ghost" data-val="left">⬅️ 左边多</button>
+        </div>
+        <div class="compare-side">
+          <div class="compare-emoji">${q.emoji.repeat(q.rightCount)}</div>
+          <button class="btn-big ghost" data-val="right">右边多 ➡️</button>
+        </div>
+      </div>`;
+  }
+  if (type === 'emoji') {
+    // 找图形：目标大图 + 图形选项
+    return `
+      <div class="quiz-target">${q.target}</div>
+      <div class="quiz-options">${q.options.map((o) => `<button class="quiz-opt" data-val="${o}">${o}</button>`).join('')}</div>`;
+  }
+  if (type === 'arith') {
+    return `
+      <div class="quiz-target arith-text">${q.a} ${q.op} ${q.b} = ?</div>
+      <div class="quiz-options quiz-options-num">${q.options.map((n) => `<button class="quiz-opt num" data-val="${n}">${n}</button>`).join('')}</div>`;
+  }
+  if (type === 'clock') {
+    return `
+      <div class="quiz-target">${q.emoji}</div>
+      <div class="quiz-options">${q.options.map((t) => `<button class="quiz-opt time" data-val="${t}">${t}</button>`).join('')}</div>`;
+  }
+  if (type === 'money') {
+    return `
+      <div class="quiz-target">${q.text}</div>
+      <div class="quiz-options quiz-options-num">${q.options.map((n) => `<button class="quiz-opt num" data-val="${n}">${n} 元</button>`).join('')}</div>`;
+  }
+  if (type === 'shop') {
+    return `
+      <div class="quiz-target">${q.ico} ${q.name}</div>
+      <div class="quiz-options quiz-options-num">${q.options.map((n) => `<button class="quiz-opt num" data-val="${n}">${n} 元</button>`).join('')}</div>`;
+  }
+  // count（数一数 / 数图形）
+  const prompt = q.target ? `数一数有几个 ${q.target}？` : '';
+  return `
+    ${q.target ? `<div class="quiz-prompt-label">${prompt}</div>` : ''}
+    <div class="quiz-target">${q.emojis}</div>
+    <div class="quiz-options quiz-options-num">${q.options.map((n) => `<button class="quiz-opt num" data-val="${n}">${n}</button>`).join('')}</div>`;
 }
 
 /* ---------- 完成：打卡得星光 ---------- */

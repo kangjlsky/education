@@ -79,3 +79,118 @@ export function makeCompareQuestion(rand = Math.random) {
     options: ['left', 'right'],
   };
 }
+
+/* =========================================================
+   阶段 3-6 出题（图形 / 加减 / 钟表 / 钱币）
+   ========================================================= */
+
+/** 基础图形池 */
+export const SHAPES = ['🔺', '⭕', '🟦', '⭐', '❤️', '🔷'];
+
+/** 整点时钟 emoji（1-12 点） */
+export const CLOCK_HOUR_EMOJIS = {
+  1: '🕐', 2: '🕑', 3: '🕒', 4: '🕓', 5: '🕔', 6: '🕕',
+  7: '🕖', 8: '🕗', 9: '🕘', 10: '🕙', 11: '🕚', 12: '🕛',
+};
+
+/** 半点时钟 emoji（1-12 点半） */
+export const CLOCK_HALF_EMOJIS = {
+  1: '🕜', 2: '🕝', 3: '🕞', 4: '🕟', 5: '🕠', 6: '🕡',
+  7: '🕢', 8: '🕣', 9: '🕤', 10: '🕥', 11: '🕦', 12: '🕧',
+};
+
+/** 小超市商品池 */
+export const SHOP_ITEMS = [
+  { ico: '🍎', name: '苹果', price: 3 },
+  { ico: '🍭', name: '棒棒糖', price: 2 },
+  { ico: '🥤', name: '汽水', price: 5 },
+  { ico: '✏️', name: '铅笔', price: 1 },
+  { ico: '🎂', name: '蛋糕', price: 8 },
+  { ico: '🚗', name: '玩具车', price: 10 },
+];
+
+/** 数字选项生成：答案 + 3 个干扰（范围 [min, max]） */
+function numericOptions(answer, rand, min, max) {
+  const candidates = [];
+  for (let i = min; i <= max; i += 1) {
+    if (i !== answer) candidates.push(i);
+  }
+  const wrongs = shuffle(candidates, rand).slice(0, 3);
+  return shuffle([answer, ...wrongs], rand);
+}
+
+/** 找图形：4 个唯一图形选项，目标为其中之一 */
+export function makeShapeFindQuestion(rand = Math.random) {
+  const target = SHAPES[Math.floor(rand() * SHAPES.length)];
+  const wrongs = shuffle(SHAPES.filter((s) => s !== target), rand).slice(0, 3);
+  return { target, answer: target, options: shuffle([target, ...wrongs], rand) };
+}
+
+/** 数图形：图形串中目标图形个数，问有多少个 */
+export function makeShapeCountQuestion(rand = Math.random) {
+  const target = SHAPES[Math.floor(rand() * SHAPES.length)];
+  const answer = 1 + Math.floor(rand() * 4); // 目标 1-4 个
+  const total = answer + 2 + Math.floor(rand() * 3); // 总 3-6 个
+  const others = SHAPES.filter((s) => s !== target);
+  const emojis = [];
+  for (let i = 0; i < answer; i += 1) emojis.push(target);
+  while (emojis.length < total) {
+    emojis.push(others[Math.floor(rand() * others.length)]);
+  }
+  return { target, emojis: shuffle(emojis, rand).join(''), answer, options: numericOptions(answer, rand, 1, 6) };
+}
+
+/** 加法口算（和 ≤ max） */
+export function makeAddQuestion(max = 10, rand = Math.random) {
+  const a = 1 + Math.floor(rand() * (max - 1));
+  const b = 1 + Math.floor(rand() * (max - a));
+  const answer = a + b;
+  return { a, b, op: '+', answer, options: numericOptions(answer, rand, 1, max + 5) };
+}
+
+/** 减法口算（差 ≥ 0） */
+export function makeSubQuestion(max = 10, rand = Math.random) {
+  const a = 1 + Math.floor(rand() * max);
+  const b = 1 + Math.floor(rand() * a);
+  const answer = a - b;
+  return { a, b, op: '-', answer, options: numericOptions(answer, rand, 0, max) };
+}
+
+/** 加减混合（默认 20 以内） */
+export function makeMixArithQuestion(max = 20, rand = Math.random) {
+  return rand() < 0.5 ? makeAddQuestion(max, rand) : makeSubQuestion(max, rand);
+}
+
+/** 钟表认读（整点/半点），用时钟 emoji */
+export function makeClockQuestion(half = false, rand = Math.random) {
+  const hour = 1 + Math.floor(rand() * 12);
+  const emojis = half ? CLOCK_HALF_EMOJIS : CLOCK_HOUR_EMOJIS;
+  const answer = half ? `${hour} 点半` : `${hour} 点`;
+  const labels = [];
+  for (let h = 1; h <= 12; h += 1) {
+    const t = half ? `${h} 点半` : `${h} 点`;
+    if (t !== answer) labels.push(t);
+  }
+  const wrongs = shuffle(labels, rand).slice(0, 3);
+  return { emoji: emojis[hour], hour, half, answer, options: shuffle([answer, ...wrongs], rand) };
+}
+
+/** 认钱币面值：显示"X 元"，选对应数字 */
+export function makeMoneyValueQuestion(rand = Math.random) {
+  const values = [1, 5, 10, 20, 50, 100];
+  const answer = values[Math.floor(rand() * values.length)];
+  const wrongs = shuffle(values.filter((v) => v !== answer), rand).slice(0, 3);
+  return { text: `${answer} 元`, answer, options: shuffle([answer, ...wrongs], rand) };
+}
+
+/** 小超市购物：显示商品与价格，选应付金额 */
+export function makeMoneyShopQuestion(rand = Math.random) {
+  const item = SHOP_ITEMS[Math.floor(rand() * SHOP_ITEMS.length)];
+  return {
+    ico: item.ico,
+    name: item.name,
+    price: item.price,
+    answer: item.price,
+    options: numericOptions(item.price, rand, 1, 12),
+  };
+}

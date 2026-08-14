@@ -311,6 +311,17 @@ function penLearned() {
   return ids;
 }
 
+/** 已学古诗 id（subject=poems 且 item 以 poem_ 开头；用于古文解锁） */
+function learnedPoems() {
+  const ids = [];
+  for (const l of Array.isArray(logs) ? logs : []) {
+    if (l && l.subject === 'poems' && l.item && l.item.startsWith('poem_') && !ids.includes(l.item)) {
+      ids.push(l.item);
+    }
+  }
+  return ids;
+}
+
 /** 今日喂食次数 = 今日打卡次数（宠物每次打卡自动喂食） */
 function feedCountToday() {
   const today = todayStr();
@@ -387,6 +398,7 @@ function renderBoard() {
     getMathProgress: mathProgress,
     getPenLearned: penLearned,
     getPenDaily: () => config.weekly.penDaily || 2,
+    getLearnedPoems: learnedPoems,
     getFeedCount: feedCountToday,
     getConfig: () => config,
     applyRedeem: doApplyRedeem,

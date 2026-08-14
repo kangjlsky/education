@@ -280,6 +280,19 @@ html, body {
 .pc-name { flex: 1; text-align: left; }
 .pc-author { font-size: 13px; color: var(--text-light); font-weight: 400; }
 .pc-status { font-size: 18px; }
+.classic-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f7f4fb;
+  border: 2px dashed #cbbee6;
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 10px;
+  opacity: 0.75;
+}
+.classic-card.locked { color: var(--text-light); }
+.pc-lock { font-size: 13px; color: #8a7ab5; margin-left: auto; }
 
 .poem-body {
   display: flex;
@@ -597,6 +610,9 @@ html, body {
 .gc-status.done { color: var(--text-light); }
 
 .quiz-options-num .quiz-opt { font-size: 34px; }
+.arith-text { font-size: 40px; font-weight: 800; }
+.quiz-opt.time { font-size: 26px; }
+.quiz-prompt-label { text-align: center; font-size: 16px; color: var(--text-light); margin-top: 8px; }
 .compare-row {
   display: flex;
   gap: 14px;
